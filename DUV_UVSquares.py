@@ -5,6 +5,19 @@ from math import hypot
 from timeit import default_timer as timer
 
 precision = 3
+blender5 = bpy.app.version >= (5, 0, 0)
+
+def is_uv_vert_selected(loop, uv_layer):
+    if blender5:
+        return loop.uv_select_vert
+    else:
+        return loop[uv_layer].select
+
+def set_uv_vert_selected(loop, uv_layer, selected):
+    if blender5:
+        loop.uv_select_vert = selected
+    else:
+        loop[uv_layer].select = selected
 
 def main(context, operator, square=False, snapToClosest=False):
     """
@@ -75,14 +88,11 @@ def main_per_object(obj, context, operator, square, snapToClosest):
     # If we do have faces selected, we might want to drop any non-quads
     for nf in nonQuadFaces:
         for l in nf.loops:
-            luv = l[uv_layer]
-            luv.select = False
+            set_uv_vert_selected(l, uv_layer, False)
 
     # helper method to check if a face is fully selected
     def is_face_selected(f):
-        if not f.select:
-            return False
-        return all(l[uv_layer].select for l in f.loops)
+        return f.select and all(is_uv_vert_selected(l, uv_layer) for l in f.loops)
 
     # figure out face islands
     def get_island_from_face(start_face):
@@ -144,7 +154,6 @@ def main_per_object(obj, context, operator, square, snapToClosest):
             key = (round(ev.uv.x, precision), round(ev.uv.y, precision))
             if key in vertsDict:
                 ev.uv = vertsDict[key][0].uv
-                ev.select = True
 
     finish_success(me, startTime)
 
@@ -176,9 +185,8 @@ def get_selection_lists(uv_layer, bm):
         face_edge_verts = []
         is_face_fully_sel = True
         for l in f.loops:
-            luv = l[uv_layer]
-            if luv.select:
-                face_edge_verts.append(luv)
+            if is_uv_vert_selected(l, uv_layer):
+                face_edge_verts.append(l[uv_layer])
             else:
                 is_face_fully_sel = False
 
@@ -221,8 +229,8 @@ def fill_verts_dict_line(uv_layer, bm, selVerts, vertsDict):
     """
     for f in bm.faces:
         for l in f.loops:
-            luv = l[uv_layer]
-            if luv.select:
+            if is_uv_vert_selected(l, uv_layer):
+                luv = l[uv_layer]
                 x = round(luv.uv.x, precision)
                 y = round(luv.uv.y, precision)
                 vertsDict[(x, y)].append(luv)
@@ -352,8 +360,6 @@ def do_scale_zero(axis='Y'):
     """
     Using the transform operator in the Image Editor to scale selection to zero on X or Y.
     """
-    last_area_type = bpy.context.area.type
-    bpy.context.area.type = 'IMAGE_EDITOR'
     last_pivot = bpy.context.space_data.pivot_point
     bpy.context.space_data.pivot_point = 'CURSOR'
 
@@ -709,12 +715,7 @@ def set_all_2d_cursors(x, y):
     """
     Set the UV editor’s 2D cursor to (x,y). If multiple image-editor areas exist, set them all.
     """
-    last_area_type = bpy.context.area.type
-    bpy.context.area.type = 'IMAGE_EDITOR'
-
     bpy.ops.uv.cursor_set(location=(x, y))
-
-    bpy.context.area.type = last_area_type
 
 def finish_success(me, start_time):
     """
@@ -750,20 +751,23 @@ def rip_uv_faces(context, operator):
 
     if not selected_faces:
         # If nothing is fully selected, pick the first selected UV loop only
+        target = None
         target_loop = None
         for f in bm.faces:
             for l in f.loops:
-                luv = l[uv_layer]
-                if luv.select:
-                    target_loop = luv
+                if is_uv_vert_selected(l, uv_layer):
+                    target = l[uv_layer]
+                    target_loop = l
                     break
-            if target_loop:
-                break
+            if target != None: break
 
         # Deselect everything, then select that single
-        deselect_all()
+        for f in bm.faces:
+            for l in f.loops:
+                set_uv_vert_selected(l, uv_layer, False)
+
         if target_loop:
-            target_loop.select = True
+            set_uv_vert_selected(target_loop, uv_layer, True)
 
         finish_success(me, start_time)
         return
@@ -772,7 +776,7 @@ def rip_uv_faces(context, operator):
     deselect_all()
     for f in selected_faces:
         for l in f.loops:
-            l[uv_layer].select = True
+            set_uv_vert_selected(l, uv_layer, True)
 
     finish_success(me, start_time)
 
@@ -795,8 +799,8 @@ def join_uv_faces(context, operator):
     # gather selected
     for f in bm.faces:
         for l in f.loops:
-            luv = l[uv_layer]
-            if luv.select:
+            if is_uv_vert_selected(l, uv_layer):
+                luv = l[uv_layer]
                 x = round(luv.uv.x, precision)
                 y = round(luv.uv.y, precision)
                 vertsDict[(x, y)].append(luv)
@@ -808,14 +812,15 @@ def join_uv_faces(context, operator):
         start_uv = group[0].uv
         for f in bm.faces:
             for l in f.loops:
-                luv = l[uv_layer]
-                if not luv.select:
+                if not is_uv_vert_selected(l, uv_layer):
+                    luv = l[uv_layer]
                     dx = start_uv.x - luv.uv.x
                     dy = start_uv.y - luv.uv.y
                     d = (dx*dx + dy*dy)**0.5
                     if d < min_dist and d < radius:
                         min_dist = d
                         min_loop = luv
+                        set_uv_vert_selected(l, uv_layer, True)
         if min_loop:
             # unify all in group to that min_loop.uv
             for uv_loop in group:

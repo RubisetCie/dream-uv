@@ -26,8 +26,10 @@ class DREAMUV_OT_uv_transfer(bpy.types.Operator):
         for i,face in enumerate(bm.faces):
             if face.select:
                 for o,vert in enumerate(face.loops):
-                    if vert[bm.loops.layers.uv.active].select:
+                    if vert.uv_select_vert:
                         selected_uv_loops.append(vert)
+                        
+                        
 
         #if nothing is selected, match UV selection to mesh selection
 
@@ -110,7 +112,7 @@ class DREAMUV_OT_uv_transfer_grab(bpy.types.Operator):
         for i,face in enumerate(bm.faces):
             if face.select:
                 for o,vert in enumerate(face.loops):
-                    if vert[bm.loops.layers.uv.active].select:
+                    if vert.uv_select_vert:
                         selected_uv_loops.append(vert)
 
         #if nothing is selected, match UV selection to mesh selection

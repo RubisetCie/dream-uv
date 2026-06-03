@@ -23,6 +23,7 @@ from . import DUV_ApplyMaterial
 from . import DUV_UVTexelDensity
 from . import DUV_UVSquares
 from . import DUV_UVBoxmap
+from . import DUV_UVBoxwrap
 
 class DUVUVToolsPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -302,6 +303,9 @@ class DREAMUV_PT_uv(bpy.types.Panel):
         row.prop_search(context.scene, "uv_box", context.scene, "objects", text="", icon="MOD_MULTIRES")
         row = col.row(align = True)
         row.operator("view3d.dreamuv_uvboxmap", text="Boxmap", icon="FILE_3D")
+        #row = col.row(align = True)
+        #hide boxwrap until i get it working again
+        #row.operator("view3d.dreamuv_uvboxwrap", text="Boxwrap", icon="FILE_3D")
         row.prop(context.scene, "duv_boxmap_uv1", icon="IPO_SINE", text="")
         row.prop(context.scene, "duv_boxmap_uv2", icon="IPO_QUAD", text="")
 
@@ -385,6 +389,7 @@ classes = (
     DUV_UVTrim.DREAMUV_OT_uv_capnext,
     DUV_ApplyMaterial.DREAMUV_OT_apply_material,
     DUV_UVBoxmap.DREAMUV_OT_uv_boxmap,
+    DUV_UVBoxwrap.DREAMUV_OT_uv_boxwrap,
     DUV_UVSquares.DREAMUV_OT_uv_squares,
     DUV_UVSquares.DREAMUV_OT_uv_squares_by_shape,
     DUV_UVSquares.DREAMUV_OT_uv_rip_faces,

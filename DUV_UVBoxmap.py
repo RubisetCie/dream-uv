@@ -1,5 +1,6 @@
 import bpy
 import bmesh
+import math
 from math import degrees
 from math import radians
 from mathutils import Vector
@@ -143,6 +144,9 @@ def main(context):
 
     if objectmode is True:
         bpy.ops.object.editmode_toggle()
+
+    #normalize islands:
+    DUV_Utils.normalize_islands(context)
 
 class DREAMUV_OT_uv_boxmap(bpy.types.Operator):
     """Unwrap using a box shape"""
